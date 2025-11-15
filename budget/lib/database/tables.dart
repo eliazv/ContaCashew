@@ -26,7 +26,7 @@ import 'package:budget/pages/activityPage.dart';
 import 'package:flutter/material.dart' show RangeValues;
 part 'tables.g.dart';
 
-int schemaVersionGlobal = 47;
+int schemaVersionGlobal = 46;
 
 // To update and migrate the database, check the README
 
@@ -1216,23 +1216,23 @@ class FinanceDatabase extends _$FinanceDatabase {
                         e.toString());
               }
             },
-            from46To47: (m, schema) async {
-              // Add Investments and InvestmentPriceHistories tables
-              try {
-                await m.createTable(schema.investments);
-              } catch (e) {
-                print(
-                    "Migration Error: Error creating table investments " +
-                        e.toString());
-              }
-              try {
-                await m.createTable(schema.investmentPriceHistories);
-              } catch (e) {
-                print(
-                    "Migration Error: Error creating table investmentPriceHistories " +
-                        e.toString());
-              }
-            },
+            // from46To47: (m, schema) async {
+            //   // Add Investments and InvestmentPriceHistories tables
+            //   try {
+            //     await m.createTable(schema.investments);
+            //   } catch (e) {
+            //     print(
+            //         "Migration Error: Error creating table investments " +
+            //             e.toString());
+            //   }
+            //   try {
+            //     await m.createTable(schema.investmentPriceHistories);
+            //   } catch (e) {
+            //     print(
+            //         "Migration Error: Error creating table investmentPriceHistories " +
+            //             e.toString());
+            //   }
+            // },
           ),
         );
       },
@@ -4662,10 +4662,9 @@ class FinanceDatabase extends _$FinanceDatabase {
                   : (i.name
                           .collate(Collate.noCase)
                           .like("%" + (searchFor) + "%") |
-                      (i.symbol != null &&
-                          i.symbol!
-                              .collate(Collate.noCase)
-                              .like("%" + (searchFor) + "%")))))
+                      i.symbol
+                          .collate(Collate.noCase)
+                          .like("%" + (searchFor) + "%"))))
           ..orderBy([
             if (archivedLast) (i) => OrderingTerm.asc(i.archived),
             (i) => OrderingTerm.desc(i.pinned),
@@ -4754,7 +4753,7 @@ class FinanceDatabase extends _$FinanceDatabase {
       InvestmentPriceHistoriesCompanion.insert(
         investmentFk: investmentPk,
         price: newPrice,
-        date: now,
+        date: Value(now),
         note: Value(note),
       ),
     );

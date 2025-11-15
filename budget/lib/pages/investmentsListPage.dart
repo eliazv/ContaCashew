@@ -221,7 +221,7 @@ class InvestmentsListPageState extends State<InvestmentsListPage>
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
-                                  getIconFromName(wallet.iconName),
+                                  Icons.account_balance_wallet,
                                   color: Colors.white,
                                   size: 24,
                                 ),
