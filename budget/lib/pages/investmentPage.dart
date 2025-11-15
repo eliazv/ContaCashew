@@ -5,8 +5,7 @@ import 'package:budget/pages/addInvestmentPage.dart';
 import 'package:budget/struct/databaseGlobal.dart';
 import 'package:budget/widgets/framework/pageFramework.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/material.dart' hide SliverToBoxAdapter;
-import 'package:budget/modified/sliver_to_box_adapter.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class InvestmentPage extends StatelessWidget {
@@ -218,7 +217,7 @@ class InvestmentPage extends StatelessWidget {
                       _buildDetailRow(
                         context,
                         "purchase-date".tr(),
-                        getWordedDate(context, investment.purchaseDate),
+                        getWordedDate(investment.purchaseDate),
                       ),
                     ],
                   ),

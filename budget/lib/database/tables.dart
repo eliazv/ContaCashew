@@ -548,7 +548,7 @@ class Investments extends Table {
   RealColumn get shares => real()(); // Number of shares/units
   RealColumn get purchasePrice => real()(); // Initial purchase price per share
   RealColumn get currentPrice => real()(); // Current price per share
-  DateTimeColumn get purchaseDate => dateTime();
+  DateTimeColumn get purchaseDate => dateTime().clientDefault(() => DateTime.now())();
   TextColumn get colour => text()
       .withLength(max: COLOUR_LIMIT)
       .nullable()();
@@ -578,9 +578,9 @@ class InvestmentPriceHistories extends Table {
   TextColumn get investmentFk =>
       text().references(Investments, #investmentPk)();
   RealColumn get price => real()(); // Price per share at this point
-  DateTimeColumn get date => dateTime();
+  DateTimeColumn get date => dateTime().clientDefault(() => DateTime.now())();
   RealColumn get shares => real().nullable()(); // Share quantity at this time
-  TextColumn get note => text().nullable(); // Transaction note (buy/sell)
+  TextColumn get note => text().nullable()(); // Transaction note (buy/sell)
   DateTimeColumn get dateCreated =>
       dateTime().clientDefault(() => new DateTime.now())();
 

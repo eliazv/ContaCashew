@@ -5,15 +5,14 @@ import 'package:budget/struct/databaseGlobal.dart';
 import 'package:budget/struct/settings.dart';
 import 'package:budget/widgets/button.dart';
 import 'package:budget/widgets/framework/pageFramework.dart';
+import 'package:budget/widgets/openSnackbar.dart';
+import 'package:budget/widgets/openPopup.dart';
 import 'package:budget/widgets/selectCategory.dart';
-import 'package:budget/widgets/selectColor.dart';
-import 'package:budget/widgets/selectIcon.dart';
 import 'package:budget/widgets/textInput.dart';
 import 'package:budget/widgets/tappable.dart';
 import 'package:drift/drift.dart' hide Column;
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/material.dart' hide SliverToBoxAdapter;
-import 'package:budget/modified/sliver_to_box_adapter.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class AddInvestmentPage extends StatefulWidget {
@@ -39,8 +38,6 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
   DateTime _purchaseDate = DateTime.now();
   String? _selectedWalletPk;
   String? _selectedCategoryPk;
-  String? _selectedColor;
-  String? _selectedIcon;
 
   bool _isEditing = false;
 
@@ -72,8 +69,6 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
       _purchaseDate = widget.investment!.purchaseDate;
       _selectedWalletPk = widget.investment!.walletFk;
       _selectedCategoryPk = widget.investment!.categoryFk;
-      _selectedColor = widget.investment!.colour;
-      _selectedIcon = widget.investment!.iconName;
     } else {
       _selectedWalletPk = "0";
     }
@@ -113,7 +108,6 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
                   labelText: "symbol".tr(),
                   icon: Icons.tag,
                   controller: _symbolController,
-                  placeholder: "AAPL, BTC, etc.",
                   bubbly: false,
                 ),
                 SizedBox(height: 16),
@@ -160,35 +154,13 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
                           children: [
                             Icon(Icons.calendar_today),
                             SizedBox(width: 12),
-                            Text(getWordedDate(context, _purchaseDate)),
+                            Text(getWordedDate(_purchaseDate)),
                           ],
                         ),
                         Icon(Icons.chevron_right),
                       ],
                     ),
                   ),
-                ),
-                SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SelectColor(
-                        selectedColor: _selectedColor,
-                        setSelectedColor: (color) {
-                          setState(() => _selectedColor = color);
-                        },
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: SelectIconButton(
-                        selectedIconName: _selectedIcon,
-                        setSelectedIconName: (icon) {
-                          setState(() => _selectedIcon = icon);
-                        },
-                      ),
-                    ),
-                  ],
                 ),
                 SizedBox(height: 32),
                 Button(
@@ -284,8 +256,8 @@ class _AddInvestmentPageState extends State<AddInvestmentPage> {
       purchaseDate: Value(_purchaseDate),
       walletFk: Value(_selectedWalletPk ?? "0"),
       categoryFk: Value(_selectedCategoryPk),
-      colour: Value(_selectedColor),
-      iconName: Value(_selectedIcon),
+      colour: Value(null),
+      iconName: Value(null),
       note: Value(_noteController.text.isNotEmpty
         ? _noteController.text
         : null),
