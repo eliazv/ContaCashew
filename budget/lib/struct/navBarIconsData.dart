@@ -158,5 +158,13 @@ Map<String, NavBarIconData> getNavBarIconsData() {
       labelLong: "goals-details",
       navigationIndexedStackIndex: 15,
     ),
+    "investments": NavBarIconData(
+      iconData: appStateSettings["outlinedIcons"]
+          ? Icons.trending_up_outlined
+          : Icons.trending_up_rounded,
+      label: "investments",
+      labelLong: "investment-tracking",
+      navigationIndexedStackIndex: 18,
+    ),
   };
 }

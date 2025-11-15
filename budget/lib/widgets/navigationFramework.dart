@@ -18,6 +18,7 @@ import 'package:budget/pages/editBudgetPage.dart';
 import 'package:budget/pages/editObjectivesPage.dart';
 import 'package:budget/pages/editWalletsPage.dart';
 import 'package:budget/pages/homePage/homePage.dart';
+import 'package:budget/pages/investmentsListPage.dart';
 import 'package:budget/pages/notificationsPage.dart';
 import 'package:budget/pages/objectivesListPage.dart';
 import 'package:budget/pages/onBoardingPage.dart';
@@ -288,6 +289,7 @@ GlobalKey<ObjectivesListPageState> objectivesListPageStateKey = GlobalKey();
 GlobalKey<UpcomingOverdueTransactionsState>
     upcomingOverdueTransactionsStateKey = GlobalKey();
 GlobalKey<CreditDebtTransactionsState> creditDebtTransactionsKey = GlobalKey();
+GlobalKey<InvestmentsListPageState> investmentsListPageStateKey = GlobalKey();
 GlobalKey<ProductsState> purchasesStateKey = GlobalKey();
 GlobalKey<AccountsPageState> accountsPageStateKey = GlobalKey();
 GlobalKey<GoogleAccountLoginButtonState> settingsGoogleAccountLoginButtonKey =
@@ -377,6 +379,7 @@ class PageNavigationFrameworkState extends State<PageNavigationFramework> {
         key: upcomingOverdueTransactionsStateKey,
         overdueTransactions: null), //16
     CreditDebtTransactions(key: creditDebtTransactionsKey, isCredit: null), //17
+    InvestmentsListPage(key: investmentsListPageStateKey, backButton: false), //18
   ];
 
   late int currentPage = widget.widthSideNavigationBar <= 0

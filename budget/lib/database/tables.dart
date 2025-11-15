@@ -26,7 +26,7 @@ import 'package:budget/pages/activityPage.dart';
 import 'package:flutter/material.dart' show RangeValues;
 part 'tables.g.dart';
 
-int schemaVersionGlobal = 46;
+int schemaVersionGlobal = 47;
 
 // To update and migrate the database, check the README
 
@@ -538,6 +538,56 @@ class Objectives extends Table {
   Set<Column> get primaryKey => {objectivePk};
 }
 
+// Investment tracking (stocks, crypto, ETFs, etc.)
+@DataClassName('Investment')
+class Investments extends Table {
+  TextColumn get investmentPk => text().clientDefault(() => uuid.v4())();
+  TextColumn get name => text().withLength(max: NAME_LIMIT)();
+  TextColumn get symbol => text().nullable()(); // Ticker symbol (AAPL, BTC, etc.)
+  TextColumn get investmentType => text().nullable()(); // stock, crypto, etf, bond, etc.
+  RealColumn get shares => real()(); // Number of shares/units
+  RealColumn get purchasePrice => real()(); // Initial purchase price per share
+  RealColumn get currentPrice => real()(); // Current price per share
+  DateTimeColumn get purchaseDate => dateTime();
+  TextColumn get colour => text()
+      .withLength(max: COLOUR_LIMIT)
+      .nullable()();
+  TextColumn get iconName => text().nullable()();
+  TextColumn get emojiIconName => text().nullable()();
+  BoolColumn get pinned => boolean().withDefault(const Constant(false))();
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+  IntColumn get order => integer()();
+  TextColumn get walletFk =>
+      text().references(Wallets, #walletPk).withDefault(const Constant("0"))();
+  TextColumn get categoryFk =>
+      text().nullable().references(Categories, #categoryPk)();
+  TextColumn get note => text().nullable().withLength(max: NOTE_LIMIT)();
+  DateTimeColumn get dateCreated =>
+      dateTime().clientDefault(() => new DateTime.now())();
+  DateTimeColumn get dateTimeModified =>
+      dateTime().withDefault(Constant(DateTime.now())).nullable()();
+
+  @override
+  Set<Column> get primaryKey => {investmentPk};
+}
+
+// Price history for investment tracking
+@DataClassName('InvestmentPriceHistory')
+class InvestmentPriceHistories extends Table {
+  TextColumn get priceHistoryPk => text().clientDefault(() => uuid.v4())();
+  TextColumn get investmentFk =>
+      text().references(Investments, #investmentPk)();
+  RealColumn get price => real()(); // Price per share at this point
+  DateTimeColumn get date => dateTime();
+  RealColumn get shares => real().nullable()(); // Share quantity at this time
+  TextColumn get note => text().nullable(); // Transaction note (buy/sell)
+  DateTimeColumn get dateCreated =>
+      dateTime().clientDefault(() => new DateTime.now())();
+
+  @override
+  Set<Column> get primaryKey => {priceHistoryPk};
+}
+
 class TransactionWithCategory {
   final TransactionCategory category;
   final Transaction transaction;
@@ -688,6 +738,8 @@ class CategoryWithTotal {
   ScannerTemplates,
   DeleteLogs,
   Objectives,
+  Investments,
+  InvestmentPriceHistories,
 ])
 class FinanceDatabase extends _$FinanceDatabase {
   // FinanceDatabase() : super(_openConnection());
@@ -1161,6 +1213,23 @@ class FinanceDatabase extends _$FinanceDatabase {
               } catch (e) {
                 print(
                     "Migration Error: Error creating column objectives.type " +
+                        e.toString());
+              }
+            },
+            from46To47: (m, schema) async {
+              // Add Investments and InvestmentPriceHistories tables
+              try {
+                await m.createTable(schema.investments);
+              } catch (e) {
+                print(
+                    "Migration Error: Error creating table investments " +
+                        e.toString());
+              }
+              try {
+                await m.createTable(schema.investmentPriceHistories);
+              } catch (e) {
+                print(
+                    "Migration Error: Error creating table investmentPriceHistories " +
                         e.toString());
               }
             },
@@ -4565,6 +4634,173 @@ class FinanceDatabase extends _$FinanceDatabase {
           ]))
         .watch();
   }
+
+  // ==================== INVESTMENTS QUERIES ====================
+
+  Stream<List<Investment>> watchAllInvestments({
+    String? walletFk,
+    String? categoryFk,
+    bool hideArchived = true,
+    bool archivedLast = false,
+    String? searchFor,
+    int? limit,
+    int? offset,
+  }) {
+    return (select(investments)
+          ..where((i) =>
+              (hideArchived == true
+                  ? i.archived.equals(false)
+                  : Constant(true)) &
+              (walletFk == null
+                  ? Constant(true)
+                  : i.walletFk.equals(walletFk)) &
+              (categoryFk == null
+                  ? Constant(true)
+                  : i.categoryFk.equals(categoryFk)) &
+              (searchFor == null
+                  ? Constant(true)
+                  : (i.name
+                          .collate(Collate.noCase)
+                          .like("%" + (searchFor) + "%") |
+                      (i.symbol != null &&
+                          i.symbol!
+                              .collate(Collate.noCase)
+                              .like("%" + (searchFor) + "%")))))
+          ..orderBy([
+            if (archivedLast) (i) => OrderingTerm.asc(i.archived),
+            (i) => OrderingTerm.desc(i.pinned),
+            (i) => OrderingTerm.asc(i.order),
+          ])
+          ..limit(limit ?? DEFAULT_LIMIT, offset: offset ?? DEFAULT_OFFSET))
+        .watch();
+  }
+
+  Stream<Investment> getInvestment(String investmentPk) {
+    return (select(investments)
+          ..where((i) => i.investmentPk.equals(investmentPk)))
+        .watchSingle();
+  }
+
+  Future<Investment> createOrUpdateInvestment(
+    InvestmentsCompanion investment, {
+    bool insert = false,
+  }) async {
+    if (insert == true) {
+      await into(investments).insert(investment);
+      return (await (select(investments)
+                ..where((i) => i.investmentPk.equals(investment.investmentPk.value)))
+              .getSingle());
+    } else {
+      await (update(investments)
+            ..where((i) => i.investmentPk.equals(investment.investmentPk.value)))
+          .write(investment);
+      return (await (select(investments)
+                ..where((i) => i.investmentPk.equals(investment.investmentPk.value)))
+              .getSingle());
+    }
+  }
+
+  Future deleteInvestment(String investmentPk) async {
+    // Delete price history first
+    await (delete(investmentPriceHistories)
+          ..where((p) => p.investmentFk.equals(investmentPk)))
+        .go();
+
+    // Delete investment
+    return await (delete(investments)
+          ..where((i) => i.investmentPk.equals(investmentPk)))
+        .go();
+  }
+
+  Future<InvestmentPriceHistory> addPriceHistory(
+    InvestmentPriceHistoriesCompanion priceHistory,
+  ) async {
+    await into(investmentPriceHistories).insert(priceHistory);
+    return (await (select(investmentPriceHistories)
+              ..where((p) =>
+                  p.priceHistoryPk.equals(priceHistory.priceHistoryPk.value)))
+            .getSingle());
+  }
+
+  Stream<List<InvestmentPriceHistory>> watchInvestmentPriceHistory(
+    String investmentPk, {
+    int? limit,
+  }) {
+    return (select(investmentPriceHistories)
+          ..where((p) => p.investmentFk.equals(investmentPk))
+          ..orderBy([(p) => OrderingTerm.desc(p.date)])
+          ..limit(limit ?? DEFAULT_LIMIT))
+        .watch();
+  }
+
+  Future<void> updateInvestmentPrice({
+    required String investmentPk,
+    required double newPrice,
+    DateTime? date,
+    String? note,
+  }) async {
+    final now = date ?? DateTime.now();
+
+    // Update current price in investment
+    await (update(investments)
+          ..where((i) => i.investmentPk.equals(investmentPk)))
+        .write(InvestmentsCompanion(
+      currentPrice: Value(newPrice),
+      dateTimeModified: Value(now),
+    ));
+
+    // Add to price history
+    await into(investmentPriceHistories).insert(
+      InvestmentPriceHistoriesCompanion.insert(
+        investmentFk: investmentPk,
+        price: newPrice,
+        date: now,
+        note: Value(note),
+      ),
+    );
+  }
+
+  Stream<double> watchPortfolioTotalValue({
+    String? walletFk,
+    bool hideArchived = true,
+  }) {
+    return watchAllInvestments(
+      walletFk: walletFk,
+      hideArchived: hideArchived,
+    ).map((investmentList) {
+      return investmentList.fold(
+        0.0,
+        (sum, inv) => sum + (inv.shares * inv.currentPrice),
+      );
+    });
+  }
+
+  Stream<Map<String, double>> watchPortfolioSummary({
+    String? walletFk,
+  }) {
+    return watchAllInvestments(
+      walletFk: walletFk,
+      hideArchived: true,
+    ).map((investmentList) {
+      double totalValue = 0;
+      double totalCost = 0;
+
+      for (var inv in investmentList) {
+        totalValue += inv.shares * inv.currentPrice;
+        totalCost += inv.shares * inv.purchasePrice;
+      }
+
+      return {
+        'totalValue': totalValue,
+        'totalCost': totalCost,
+        'gainLoss': totalValue - totalCost,
+        'gainLossPercentage':
+            totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0,
+      };
+    });
+  }
+
+  // ==================== END INVESTMENTS QUERIES ====================
 
   Stream<Map<String, TransactionCategory>> watchAllCategoriesMapped(
       {int? limit, int? offset}) {
